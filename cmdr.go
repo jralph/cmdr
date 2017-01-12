@@ -33,9 +33,15 @@ func runCommands(command string, processes int, staggered bool, restart bool) {
 	for i := 0; i < processes; i++ {
 		wg.Add(1)
 
-		split := strings.SplitN(command, " ", 2)
+		var cmd *exec.Cmd
 
-		cmd := exec.Command(split[0], split[1])
+		if strings.Contains(command, " ") {
+			commandParts := strings.SplitN(command, " ", 2)
+
+			cmd = exec.Command(commandParts[0], commandParts[1])
+		} else {
+			cmd = exec.Command(command)
+		}
 
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
