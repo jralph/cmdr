@@ -32,7 +32,15 @@ func runCommands(command string, processes int, staggered bool, restart bool) {
 
 	for i := 0; i < processes; i++ {
 		wg.Add(1)
-		go runCommand(i, command, staggered, restart)
+
+		split := strings.SplitN(command, " ", 2)
+
+		cmd := exec.Command(split[0], split[1])
+
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+
+		go runCommand(i, cmd, staggered, restart)
 	}
 
 	wg.Wait()
@@ -40,27 +48,20 @@ func runCommands(command string, processes int, staggered bool, restart bool) {
 	fmt.Println("Complete.")
 }
 
-func runCommand(id int, command string, staggered bool, restart bool) {
+func runCommand(id int, command *exec.Cmd, staggered bool, restart bool) {
 	if staggered {
 		time.Sleep(time.Duration(rand.Intn(5)) * time.Second)
 	}
-
-	split := strings.SplitN(command, " ", 2)
-
-	process := exec.Command(split[0], split[1])
 
 	fmt.Println(
 		fmt.Sprintf(
 			"\033[36m ==>\033[37m Starting process\033[32m [%d]\033[32m [%s]\033[37m",
 			id,
-			command,
+			strings.Join(command.Args, " "),
 		),
 	)
 
-	process.Stdout = os.Stdout
-	process.Stderr = os.Stderr
-
-	if err := process.Run(); err != nil {
+	if err := command.Run(); err != nil {
 		defer wg.Done()
 
 		fmt.Println(fmt.Sprintf("\033[31m ==> Error: [%d] %s \033[37m", id, err.Error()))
