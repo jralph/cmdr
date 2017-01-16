@@ -11,8 +11,6 @@ import (
 	"time"
 )
 
-var wg sync.WaitGroup
-
 func main() {
 	processes := getopt.IntLong("processes", 'n', 1, "The number of processes to run.")
 	staggered := getopt.BoolLong("staggered", 's', "", "Stagger the starting of processes.")
@@ -30,6 +28,8 @@ func main() {
 func runCommands(command string, processes int, staggered bool, restart bool) {
 	fmt.Println(" ==> Starting processes ...")
 
+	var wg sync.WaitGroup
+
 	for i := 0; i < processes; i++ {
 		wg.Add(1)
 
@@ -46,7 +46,7 @@ func runCommands(command string, processes int, staggered bool, restart bool) {
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
 
-		go runCommand(i, cmd, staggered, restart)
+		go runCommand(i, cmd, staggered, restart, &wg)
 	}
 
 	wg.Wait()
@@ -54,7 +54,7 @@ func runCommands(command string, processes int, staggered bool, restart bool) {
 	fmt.Println("Complete.")
 }
 
-func runCommand(id int, command *exec.Cmd, staggered bool, restart bool) {
+func runCommand(id int, command *exec.Cmd, staggered bool, restart bool, wg *sync.WaitGroup) {
 	if staggered {
 		time.Sleep(time.Duration(rand.Intn(5)) * time.Second)
 	}
@@ -74,7 +74,7 @@ func runCommand(id int, command *exec.Cmd, staggered bool, restart bool) {
 	} else if restart {
 		fmt.Printf("\033[31m ==> Process [%d] stopped, possibly due to queue restart signal. Restarting...\033[37m\n", id)
 
-		runCommand(id, command, staggered, restart)
+		runCommand(id, command, staggered, restart, wg)
 	} else {
 		defer wg.Done()
 	}
